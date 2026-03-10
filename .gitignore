@@ -1,5 +1,16 @@
-dist/
 node_modules/
+dist/
+build/
+.vite/
+.DS_Store
+*.log
+
+# Wrangler / Cloudflare
 .wrangler/
 .dev.vars
-worker-configuration.d.ts
+*.local
+
+# Python venv (se existir no repo)
+venv/
+.venv/
+__pycache__/

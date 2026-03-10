@@ -1,0 +1,2 @@
+DROP INDEX idx_quick_valuations_business_id;
+DROP TABLE quick_valuations;
