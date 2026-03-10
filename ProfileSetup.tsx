@@ -145,22 +145,33 @@ export default function ProfileSetup() {
           <h1 className="text-4xl font-bold text-gray-900 mb-3">
             Configure seu Perfil
           </h1>
-          <p className="text-xl text-gray-600">
+          <p className="text-xl text-gray-600 mb-4">
             Escolha o tipo de perfil que melhor se adequa às suas necessidades
           </p>
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="text-[#00A9E0] hover:text-[#0098CC] font-medium underline"
+          >
+            ← Voltar ao Dashboard
+          </button>
         </div>
 
         {/* Info Banner */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-8">
+        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-xl p-6 mb-8">
           <div className="flex items-start space-x-3">
-            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center flex-shrink-0">
               <CheckCircle2 className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 mb-1">Escolha seu perfil</h3>
-              <p className="text-sm text-gray-600">
-                Todos os perfis incluem acesso a recursos premium da plataforma. 
-                Você pode alternar entre perfis a qualquer momento.
+              <h3 className="font-semibold text-gray-900 mb-2 text-lg">Como funciona?</h3>
+              <ul className="space-y-2 text-sm text-gray-700">
+                <li><strong>Básico:</strong> Gratuito - apenas visualizar empresas à venda no marketplace</li>
+                <li><strong>Comprador:</strong> R$ 33/mês - acesso completo para encontrar e comprar empresas</li>
+                <li><strong>Vendedor:</strong> R$ 33/mês - ferramentas completas para vender sua empresa (valuation, documentos, anúncios)</li>
+                <li><strong>Híbrido:</strong> R$ 66/mês - compre E venda empresas com todos os recursos</li>
+              </ul>
+              <p className="text-xs text-gray-500 mt-3 italic">
+                Você pode alterar seu perfil a qualquer momento no Dashboard
               </p>
             </div>
           </div>

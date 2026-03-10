@@ -48,6 +48,13 @@ interface BusinessFormData {
   objetivos_compra: string;
   experiencia_empreendedor: string;
   dedicacao_tempo: string;
+
+  // Campos Premium: Valuation Profissional
+  receita_recorrente: string;
+  concentracao_clientes: string;
+  tendencia_crescimento: string;
+  contratos_longo_prazo: string;
+  dependencia_proprietario: string;
 }
 
 const RAMOS_ATIVIDADE = [
@@ -150,6 +157,42 @@ const CAPITAL_AQUISICAO = [
   "Acima de R$ 2.000.000",
 ];
 
+const RECEITA_RECORRENTE = [
+  "0-25%",
+  "25-50%",
+  "50-75%",
+  "75-100%",
+  "Não se aplica",
+];
+
+const CONCENTRACAO_CLIENTES = [
+  "Menos de 20%",
+  "20-40%",
+  "40-60%",
+  "Mais de 60%",
+];
+
+const TENDENCIA_CRESCIMENTO = [
+  "Cresceu mais de 20%",
+  "Cresceu 0-20%",
+  "Estável (+/- 5%)",
+  "Decresceu",
+];
+
+const CONTRATOS_LONGO_PRAZO = [
+  "Sim, representam mais de 50% da receita",
+  "Sim, representam 20-50% da receita",
+  "Sim, representam menos de 20%",
+  "Não possui",
+];
+
+const DEPENDENCIA_PROPRIETARIO = [
+  "Funciona indefinidamente sem mim",
+  "Funciona mais de 6 meses",
+  "Funciona de 1 a 6 meses",
+  "Funciona menos de 1 mês",
+];
+
 export default function BusinessRegistration() {
   const [userType, setUserType] = useState<string>("");
   const [businessId, setBusinessId] = useState<string>("");
@@ -189,9 +232,16 @@ export default function BusinessRegistration() {
     objetivos_compra: "",
     experiencia_empreendedor: "",
     dedicacao_tempo: "",
+    receita_recorrente: "",
+    concentracao_clientes: "",
+    tendencia_crescimento: "",
+    contratos_longo_prazo: "",
+    dependencia_proprietario: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasActivePlan, setHasActivePlan] = useState(false);
+  const [planType, setPlanType] = useState<string | null>(null);
   const navigate = useNavigate();
   const { } = useAuth();
 
@@ -222,6 +272,14 @@ export default function BusinessRegistration() {
           if (businessData.businesses && businessData.businesses.length > 0) {
             setBusinessId(businessData.businesses[0].id);
           }
+        }
+
+        // Check subscription status
+        const subscriptionRes = await fetch("/api/subscriptions/active");
+        if (subscriptionRes.ok) {
+          const subscriptionData = await subscriptionRes.json();
+          setHasActivePlan(subscriptionData.has_active_plan || false);
+          setPlanType(subscriptionData.plan_type || null);
         }
       } catch (error) {
         console.error("Error fetching profile:", error);
@@ -929,6 +987,163 @@ export default function BusinessRegistration() {
                       </select>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step: Dados para Valuation Profissional (Premium) */}
+          {currentStepKey === "fiscal" && (
+            <div className="mt-8 border-t-2 pt-8">
+              <div className={`relative ${!hasActivePlan ? 'pointer-events-none' : ''}`}>
+                {/* Overlay for locked state */}
+                {!hasActivePlan && (
+                  <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 rounded-xl flex items-center justify-center">
+                    <div className="bg-white border-2 border-[#00A9E0] rounded-xl p-8 max-w-md text-center shadow-xl">
+                      <div className="mb-4">
+                        <span className="inline-block px-4 py-2 bg-gradient-to-r from-yellow-400 to-amber-500 text-white rounded-full text-sm font-bold">
+                          🔒 Disponível nos planos Bronze, Silver e Gold
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">
+                        Desbloqueie Análises Avançadas
+                      </h3>
+                      <p className="text-gray-600 mb-4">
+                        Preencha esses dados para reduzir incerteza e obter um Valuation Completo mais preciso
+                      </p>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          const url = businessId 
+                            ? `/planos?source=valuation_fields_locked&businessId=${businessId}`
+                            : `/planos?source=valuation_fields_locked`;
+                          window.open(url, '_blank');
+                        }}
+                        className="px-6 py-3 bg-gradient-to-r from-[#00A9E0] to-[#1CB5E0] text-white rounded-xl hover:from-[#0098CC] hover:to-[#00A9E0] transition-all shadow-lg hover:shadow-xl font-semibold"
+                      >
+                        Ver planos com Valuation
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Header with badge */}
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      Dados para Valuation Profissional (Opcional)
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Esses dados reduzem incerteza e liberam análises avançadas no Valuation Completo.
+                    </p>
+                  </div>
+                  {hasActivePlan && (
+                    <span className="px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-semibold whitespace-nowrap">
+                      ✓ Incluído no seu plano: {planType?.toUpperCase()}
+                    </span>
+                  )}
+                </div>
+
+                {/* Premium fields */}
+                <div className="space-y-6 opacity-30" style={hasActivePlan ? {opacity: 1} : {}}>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Qual percentual da receita é recorrente (contratos, assinaturas)?
+                    </label>
+                    <select
+                      value={formData.receita_recorrente}
+                      onChange={(e) => handleInputChange("receita_recorrente", e.target.value)}
+                      disabled={!hasActivePlan}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00A9E0] focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Selecione...</option>
+                      {RECEITA_RECORRENTE.map((opcao) => (
+                        <option key={opcao} value={opcao}>
+                          {opcao}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Os 3 maiores clientes representam quanto da receita total?
+                    </label>
+                    <select
+                      value={formData.concentracao_clientes}
+                      onChange={(e) => handleInputChange("concentracao_clientes", e.target.value)}
+                      disabled={!hasActivePlan}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00A9E0] focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Selecione...</option>
+                      {CONCENTRACAO_CLIENTES.map((opcao) => (
+                        <option key={opcao} value={opcao}>
+                          {opcao}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Como foi o faturamento nos últimos 12 meses?
+                    </label>
+                    <select
+                      value={formData.tendencia_crescimento}
+                      onChange={(e) => handleInputChange("tendencia_crescimento", e.target.value)}
+                      disabled={!hasActivePlan}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00A9E0] focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Selecione...</option>
+                      {TENDENCIA_CRESCIMENTO.map((opcao) => (
+                        <option key={opcao} value={opcao}>
+                          {opcao}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Possui contratos firmados com prazo superior a 12 meses?
+                    </label>
+                    <select
+                      value={formData.contratos_longo_prazo}
+                      onChange={(e) => handleInputChange("contratos_longo_prazo", e.target.value)}
+                      disabled={!hasActivePlan}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00A9E0] focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Selecione...</option>
+                      {CONTRATOS_LONGO_PRAZO.map((opcao) => (
+                        <option key={opcao} value={opcao}>
+                          {opcao}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      A empresa consegue operar normalmente sem você por quanto tempo?
+                    </label>
+                    <select
+                      value={formData.dependencia_proprietario}
+                      onChange={(e) => handleInputChange("dependencia_proprietario", e.target.value)}
+                      disabled={!hasActivePlan}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00A9E0] focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Selecione...</option>
+                      {DEPENDENCIA_PROPRIETARIO.map((opcao) => (
+                        <option key={opcao} value={opcao}>
+                          {opcao}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <p className="text-xs text-gray-500 italic mt-4">
+                    * Precisão estimada depende da qualidade dos dados informados e do setor. Valuation não constitui laudo oficial.
+                  </p>
                 </div>
               </div>
             </div>

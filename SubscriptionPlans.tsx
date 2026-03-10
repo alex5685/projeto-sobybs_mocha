@@ -1,5 +1,5 @@
-import { Check, ArrowRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Check, ArrowRight, TrendingUp } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@getmocha/users-service/react";
 import { useState, useEffect } from "react";
 
@@ -38,15 +38,34 @@ const planConfigs = {
   },
 };
 
+interface QuickValuation {
+  id: number;
+  business_id: string;
+  valor_minimo: number;
+  valor_maximo: number;
+  multiplo_min: number;
+  multiplo_max: number;
+  metodo: string;
+  segmento: string;
+  lucro_liquido_mensal_estimado: number;
+  lucro_liquido_anual_estimado: number;
+  ativos_incluidos: number;
+  created_at: string;
+  expires_at: string;
+}
+
 export default function SubscriptionPlans() {
   const navigate = useNavigate();
   const { user, isPending } = useAuth();
+  const [searchParams] = useSearchParams();
   const [planServices, setPlanServices] = useState<Record<string, PlanService[]>>({
     bronze: [],
     silver: [],
     gold: [],
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [valuation, setValuation] = useState<QuickValuation | null>(null);
+  const [fromQuickValuation, setFromQuickValuation] = useState(false);
 
   useEffect(() => {
     const loadPlanServices = async () => {
@@ -65,6 +84,55 @@ export default function SubscriptionPlans() {
 
     loadPlanServices();
   }, []);
+
+  useEffect(() => {
+    const loadValuationData = async () => {
+      const source = searchParams.get("source");
+      const valuationId = searchParams.get("valuationId");
+      const businessId = searchParams.get("businessId");
+
+      if (source === "valuation_quick") {
+        setFromQuickValuation(true);
+
+        // Try to fetch valuation data
+        if (valuationId) {
+          try {
+            const response = await fetch(`/api/valuations/${valuationId}`);
+            if (response.ok) {
+              const data = await response.json();
+              setValuation(data.valuation);
+              
+              // Track upgrade view
+              await fetch(`/api/valuations/${valuationId}/track`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  event: "upgrade_view",
+                  source: "valuation_quick",
+                  businessId,
+                }),
+              });
+            }
+          } catch (error) {
+            console.error("Error loading valuation:", error);
+          }
+        } else if (businessId) {
+          // Fallback: get last quick valuation for the business
+          try {
+            const response = await fetch(`/api/business/${businessId}/quick-valuation`);
+            if (response.ok) {
+              const data = await response.json();
+              setValuation(data.valuation);
+            }
+          } catch (error) {
+            console.error("Error loading quick valuation:", error);
+          }
+        }
+      }
+    };
+
+    loadValuationData();
+  }, [searchParams]);
 
   const handleSelectPlan = (planName: string) => {
     if (!user && !isPending) {
@@ -101,6 +169,51 @@ export default function SubscriptionPlans() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        {/* Quick Valuation Conversion Section */}
+        {fromQuickValuation && (
+          <div className="bg-gradient-to-r from-[#00A9E0]/10 via-blue-50 to-[#00A9E0]/10 rounded-2xl border-2 border-[#00A9E0] p-8 mb-12 shadow-lg">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0">
+                <TrendingUp className="w-12 h-12 text-[#00A9E0]" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                  🎯 Escolha o Valuation Profissional Ideal
+                </h2>
+                {valuation ? (
+                  <>
+                    <div className="bg-white rounded-xl p-6 mb-4 shadow-md">
+                      <p className="text-lg text-gray-700 mb-2">
+                        Seu valuation rápido mostrou:{" "}
+                        <span className="font-bold text-[#00A9E0]">
+                          R$ {valuation.valor_minimo.toLocaleString("pt-BR")} - R${" "}
+                          {valuation.valor_maximo.toLocaleString("pt-BR")}
+                        </span>
+                      </p>
+                      <p className="text-md text-gray-600">
+                        Faixa de incerteza:{" "}
+                        <span className="font-semibold text-orange-600">
+                          R$ {(valuation.valor_maximo - valuation.valor_minimo).toLocaleString("pt-BR")}
+                        </span>
+                      </p>
+                    </div>
+                    <p className="text-gray-700 text-lg">
+                      Veja como cada plano reduz essa incerteza e aumenta suas chances de vender pelo melhor preço:
+                    </p>
+                  </>
+                ) : (
+                  <div className="bg-white rounded-xl p-6 mb-4 shadow-md">
+                    <p className="text-lg text-gray-700">
+                      Você viu um valuation rápido — desbloqueie o valuation completo para ter uma estimativa
+                      precisa e profissional do valor da sua empresa.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header Section */}
         <div className="text-center mb-16">
           <h1 className="text-5xl font-bold text-gray-900 mb-4">
@@ -163,6 +276,125 @@ export default function SubscriptionPlans() {
 
               {/* Features List */}
               <div className="p-8">
+                {/* Valuation Benefits Section */}
+                <div className="mb-6 pb-6 border-b-2 border-gray-100">
+                  <h4 className="font-bold text-gray-900 mb-4 flex items-center">
+                    <TrendingUp className="w-5 h-5 mr-2 text-[#00A9E0]" />
+                    💰 Valuation Completo {planKey === "bronze" ? "Básico" : planKey === "silver" ? "Avançado" : "Premium"}
+                  </h4>
+                  <ul className="space-y-3">
+                    {planKey === "bronze" && (
+                      <>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">
+                            <strong>Estimativa com menor incerteza (~±15%)</strong>
+                            {valuation && (
+                              <span className="block text-xs text-gray-600 mt-1">
+                                Exemplo: R$ {(valuation.valor_minimo * 1.08).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} - R$ {(valuation.valor_maximo * 0.92).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
+                              </span>
+                            )}
+                          </span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">Relatório PDF 8 páginas</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">Análise de risco básica</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">3 cenários de valor</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">1 revisão grátis em 90 dias</span>
+                        </li>
+                      </>
+                    )}
+                    {planKey === "silver" && (
+                      <>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">
+                            <strong>Estimativa com menor incerteza (~±10%)</strong>
+                            {valuation && (
+                              <span className="block text-xs text-gray-600 mt-1">
+                                Exemplo: R$ {(valuation.valor_minimo * 1.05).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} - R$ {(valuation.valor_maximo * 0.95).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
+                              </span>
+                            )}
+                          </span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">Relatório PDF 15-20 páginas</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">3 metodologias aplicadas</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">Análise detalhada de riscos</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">Plano de ação para valorização</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">Dashboard interativo</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">Revisões ilimitadas (plano ativo)</span>
+                        </li>
+                      </>
+                    )}
+                    {planKey === "gold" && (
+                      <>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">
+                            <strong>Estimativa com menor incerteza (~±5%)</strong>
+                            {valuation && (
+                              <span className="block text-xs text-gray-600 mt-1">
+                                Exemplo: R$ {(valuation.valor_minimo * 1.025).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} - R$ {(valuation.valor_maximo * 0.975).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
+                              </span>
+                            )}
+                          </span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">Relatório executivo 30+ páginas</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">5 metodologias + análise de intangíveis</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">Due diligence preliminar</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">Consultoria 1h ao vivo</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">Certificado oficial</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700 text-sm">Suporte prioritário</span>
+                        </li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+
                 <ul className="space-y-4 mb-8">
                   {planServices[planKey]?.map((service) => (
                     <li key={service.id} className="flex items-start">
@@ -172,6 +404,11 @@ export default function SubscriptionPlans() {
                   ))}
                 </ul>
 
+                {/* Disclaimer */}
+                <p className="text-xs text-gray-500 mb-6 border-t border-gray-100 pt-4">
+                  * Precisão estimada depende da qualidade dos dados informados e do setor. Valuation não constitui laudo oficial.
+                </p>
+
                 <button
                   onClick={() => handleSelectPlan(planKey)}
                   className={`w-full py-4 rounded-xl font-semibold text-lg transition-all shadow-md hover:shadow-lg flex items-center justify-center space-x-2 ${
@@ -180,9 +417,22 @@ export default function SubscriptionPlans() {
                       : "bg-gray-100 text-gray-900 hover:bg-gray-200"
                   }`}
                 >
-                  <span>Contratar {plan.name}</span>
+                  <span>
+                    {fromQuickValuation
+                      ? planKey === "bronze"
+                        ? "Desbloquear valuation completo"
+                        : planKey === "silver"
+                        ? "Desbloquear valuation avançado"
+                        : "Desbloquear premium"
+                      : `Contratar ${plan.name}`}
+                  </span>
                   <ArrowRight className="w-5 h-5" />
                 </button>
+                {fromQuickValuation && planKey === "silver" && (
+                  <p className="text-center text-sm text-[#00A9E0] font-semibold mt-2">
+                    ⭐ Melhor custo-benefício para reduzir incerteza
+                  </p>
+                )}
               </div>
             </div>
             ))

@@ -2,18 +2,78 @@ import { useAuth } from "@getmocha/users-service/react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, Building2, TrendingUp, FileText, Users, Loader2 } from "lucide-react";
 import { useProfile } from "../hooks/useProfile";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import ValuationExpiredModal from "../components/ValuationExpiredModal";
+import ConversionBanner from "../components/ConversionBanner";
+
+interface ExpiredValuation {
+  id: number;
+  business_id: string;
+  business_name: string;
+  created_at: string;
+}
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const { profile, isLoading } = useProfile();
   const navigate = useNavigate();
+  const [showExpiredModal, setShowExpiredModal] = useState(false);
+  const [selectedExpiredValuation, setSelectedExpiredValuation] = useState<ExpiredValuation | null>(null);
+  const [hasActivePlan, setHasActivePlan] = useState(false);
 
   useEffect(() => {
     if (!isLoading && user && !profile) {
       navigate("/profile-setup");
     }
   }, [user, profile, isLoading, navigate]);
+
+  useEffect(() => {
+    const checkExpiredValuations = async () => {
+      if (!user) return;
+
+      try {
+        // Check for active plan
+        const planResponse = await fetch("/api/subscriptions/active", {
+          credentials: "include",
+        });
+
+        if (planResponse.ok) {
+          const planData = await planResponse.json();
+          setHasActivePlan(!!planData.subscription);
+        }
+
+        // Check for expired quick valuations
+        const response = await fetch("/api/valuations/quick/expired", {
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.expired_valuations && data.expired_valuations.length > 0) {
+            setSelectedExpiredValuation(data.expired_valuations[0]);
+            setShowExpiredModal(true);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking expired valuations:", error);
+      }
+    };
+
+    checkExpiredValuations();
+  }, [user]);
+
+  const handleMarkNotified = async () => {
+    if (!selectedExpiredValuation) return;
+
+    try {
+      await fetch(`/api/valuations/${selectedExpiredValuation.id}/mark-notified`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (error) {
+      console.error("Error marking valuation as notified:", error);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -119,6 +179,22 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Conversion Banner - Show if user doesn't have active plan */}
+        {!hasActivePlan && (
+          <ConversionBanner />
+        )}
+
+        {/* Expired Valuation Modal */}
+        {showExpiredModal && selectedExpiredValuation && (
+          <ValuationExpiredModal
+            businessId={selectedExpiredValuation.business_id}
+            businessName={selectedExpiredValuation.business_name}
+            valuationId={selectedExpiredValuation.id}
+            onClose={() => setShowExpiredModal(false)}
+            onMarkNotified={handleMarkNotified}
+          />
+        )}
+
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Bem-vindo ao Sobybs

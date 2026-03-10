@@ -238,26 +238,90 @@
 
 ---
 
-### 4.3 Valuation IA (`/empresa/:id/valuation`)
-**Arquivo:** `src/react-app/pages/AIValuation.tsx`
-**Função:** Análise de valuation da empresa usando IA
-**Controle de Acesso:** Apenas owner da empresa ou Admin
-**Status:** Em desenvolvimento
+### 4.3 Valuation Rápido - Gratuito (`/valuation-rapido/:businessId`)
+**Arquivo:** `src/react-app/pages/QuickValuation.tsx`
+**Função:** Geração de valuation básico gratuito como lead magnet
+**Controle de Acesso:** Usuário autenticado com perfil Vendedor/Híbrido ou owner da empresa
+**Status:** ✅ Implementado
 
-**Funcionalidades Planejadas:**
-- Análise automática de dados financeiros
-- Cálculo de múltiplos (EBITDA, receita)
-- Comparação com mercado
-- Geração de relatório
+**Funcionalidades:**
+- Cálculo básico de valor estimado
+- Faixa de incerteza ampla (±20%)
+- 1 valuation gratuito por empresa
+- CTA para upgrade de plano
+- Tracking de conversão
 
-**Backend:** `POST /api/business/:id/valuation` (a ser criado)
+**Backend:**
+- `POST /api/business/:id/quick-valuation` - Gerar valuation rápido
+- `GET /api/business/:id/quick-valuation` - Buscar valuation rápido existente
+- `GET /api/valuations/:id` - Buscar valuation por ID
+- `POST /api/valuations/:id/track` - Tracking de eventos
+
 **Navegação:**
-- → `/empresa/:id` (voltar para detalhes)
+- → `/planos?source=valuation_quick&businessId=:id&valuationId=:id` (upgrade)
+- → `/dashboard` (voltar)
 
 **Dependências:**
-- Dados financeiros obrigatórios na empresa
-- Integração com IA (a ser definida)
-- Todo #42: Estruturar valuation IA
+- Tabela: `valuations` (type='quick')
+- Dados básicos da empresa
+
+---
+
+### 4.4 Valuation Completo - Pago (`/empresa/:businessId/valuation-completo`)
+**Arquivo:** `src/react-app/pages/CompleteValuation.tsx`
+**Função:** Visualização de valuation completo com conteúdo variável por plano (Bronze/Silver/Gold)
+**Controle de Acesso:** Owner da empresa ou Admin + plano ativo obrigatório
+**Status:** ✅ Implementado
+
+**Funcionalidades por Plano:**
+
+**Bronze:**
+- Valor mínimo/máximo/central
+- Nível de incerteza ~15%
+- Score de atratividade
+- 1 metodologia
+- Riscos básicos
+- 3 cenários
+- Comparação setorial simples
+- Download PDF (8 páginas)
+- 1 revisão em 90 dias
+
+**Silver (adiciona ao Bronze):**
+- 3 metodologias (tabs interativos)
+- Nível de incerteza ~10%
+- Matriz de risco visual
+- Benchmarking com 10+ empresas
+- Plano de ação estruturado
+- Dashboard interativo (Recharts)
+- Download PDF (15-20 páginas)
+- Revisões ilimitadas
+
+**Gold (adiciona ao Silver):**
+- 5 metodologias
+- Nível de incerteza ~5%
+- Análise de intangíveis
+- Due diligence preliminar
+- Plano de valorização 90 dias
+- Certificado oficial
+- CTA para consultoria ao vivo
+- Download PDF executivo (30+ páginas)
+- Revisões ilimitadas + suporte prioritário
+
+**Backend:**
+- `GET /api/business/:id/complete-valuation` - Buscar valuation completo (via /api/valuations/)
+- `POST /api/business/:id/generate-valuation-report` - Gerar PDF (atualmente stub, retorna report_id)
+- `POST /api/business/:id/request-revision` - Solicitar revisão (via /api/valuations/)
+
+**Navegação:**
+- → `/planos?source=valuation_complete_locked&businessId=:id` (se sem plano)
+- → `/planos?source=valuation_complete_upgrade&businessId=:id` (upgrade)
+- → `/dashboard` (voltar)
+
+**Dependências:**
+- Tabela: `valuations` (type='complete')
+- Plano ativo validado via `GET /api/subscriptions/active`
+- Campos premium em `business_details`
+- R2 Storage para PDFs gerados
 
 ---
 
@@ -291,24 +355,41 @@
 
 ### 6.1 Planos de Assinatura (`/planos`)
 **Arquivo:** `src/react-app/pages/SubscriptionPlans.tsx`
-**Função:** Visualização e contratação de planos
+**Função:** Visualização e contratação de planos com sistema de conversão
+**Status:** ✅ Implementado (com conversão integrada)
 
 **Planos Disponíveis:**
-- Básico (Gratuito)
-- Comprador
-- Vendedor
-- Híbrido
+- Bronze (R$ 49/mês) - Valuation básico, ±15% incerteza
+- Silver (R$ 99/mês) - 3 metodologias, ±10% incerteza, revisões ilimitadas
+- Gold (R$ 199/mês) - 5 metodologias, ±5% incerteza, due diligence
 
-**Backend:** `POST /api/payments/create-link` (criar link de pagamento)
+**Funcionalidades:**
+- Query params para tracking de conversão (source, businessId, valuationId)
+- Seção especial mostrando dados do valuation quando vindo de conversão
+- Comparação de benefícios por plano (incerteza, metodologias, revisões)
+- Tracking automático de eventos de visualização
+
+**Backend:**
+- `POST /api/payments/create-link` (criar link de pagamento)
+- `POST /api/valuations/:id/track` (tracking de conversão)
+- `GET /api/valuations/:id` (dados do valuation para conversão)
+- `GET /api/subscriptions/active` (verificar plano ativo)
+
 **Navegação:**
 - → URL externa (Stripe/gateway de pagamento)
 - → `/dashboard` (após conclusão)
 
+**Fontes de Conversão:**
+- `valuation_quick` - Vindo do valuation rápido gratuito
+- `valuation_complete_locked` - Tentou acessar valuation completo sem plano
+- `valuation_complete_upgrade` - Upgrade do plano atual
+- `dashboard_banner` - Banner no dashboard
+- `premium_modal` - Modal de conteúdo premium bloqueado
+
 **Dependências:**
-- Backend: `/src/backend/routes/payments.ts`
-- Banco de dados: tabela `payment_links`
-- Integração: Gateway de pagamento (Stripe - a implementar)
-- Todo #13: Integrar gateway de pagamento
+- Backend: `/src/backend/routes/payments.ts`, `/src/backend/routes/valuations.ts`
+- Banco de dados: tabelas `payment_links`, `valuations` (com campos de tracking)
+- Componentes: `ValuationExpiredModal`, `PremiumModal`, `ConversionBanner`
 
 ---
 
@@ -408,6 +489,10 @@
 - `PUT /api/business/:id` - Atualizar empresa
 - `DELETE /api/business/:id` - Excluir empresa
 - `GET /api/business/:id/images` - Listar imagens
+- `POST /api/business/:id/quick-valuation` - Gerar valuation rápido
+- `GET /api/business/:id/quick-valuation` - Buscar valuation rápido existente
+- `GET /api/business/:id/complete-valuation` - Buscar valuation completo (requer plano)
+- `POST /api/business/:id/generate-valuation-report` - Gerar relatório PDF (stub - implementação real pendente)
 
 ---
 
@@ -471,6 +556,35 @@
 
 ---
 
+### 9.10 Valuations (`/api/valuations/*`)
+**Arquivo:** `src/backend/routes/valuations.ts`
+**Endpoints:**
+- `GET /api/valuations/:id` - Buscar valuation por ID
+- `POST /api/valuations/:id/track` - Tracking de eventos de conversão
+- `POST /api/valuations/:id/mark-notified` - Marcar como notificado (D+7)
+- `GET /api/valuations/quick/expired` - Buscar valuations rápidos expirados do usuário
+- `GET /api/business/:id/complete-valuation` - Buscar valuation completo (requer autenticação + plano ativo)
+- `POST /api/business/:id/request-revision` - Solicitar revisão de valuation (limites por plano)
+
+**Eventos de Tracking:**
+- `view_plans` - Usuário visualizou página de planos
+- `start_checkout` - Iniciou processo de checkout
+- `complete_purchase` - Completou compra
+- `dismiss_modal` - Dispensou modal de conversão
+
+---
+
+### 9.11 Subscriptions (`/api/subscriptions/*`)
+**Arquivo:** `src/backend/routes/subscriptions.ts`
+**Endpoints:**
+- `GET /api/subscriptions/active` - Verifica se usuário tem plano ativo e retorna tipo
+
+**Controle de Acesso:** Requer autenticação
+
+---
+
+---
+
 ## 10. BANCO DE DADOS (D1 - SQLite)
 
 ### Tabelas Principais:
@@ -509,6 +623,42 @@
 **team_members**
 - Membros da equipe administrativa
 - Relaciona com: `users`
+
+**business_details** (campos premium adicionados)
+- `receita_recorrente` - Receita recorrente (%)
+- `concentracao_clientes` - Concentração de clientes
+- `tendencia_crescimento` - Tendência de crescimento
+- `contratos_longo_prazo` - Contratos de longo prazo
+- `dependencia_proprietario` - Dependência do proprietário
+
+**valuations** (tabela unificada para quick e complete)
+- `id` - ID único (autoincrement)
+- `user_id` - ID do usuário
+- `business_id` - ID da empresa
+- `type` - Tipo: 'quick' ou 'complete'
+- `status` - Status: 'done', 'processing', 'failed'
+- `plan_type` - Plano: 'bronze', 'silver', 'gold' (para complete)
+- `valor_estimado` - Valor estimado
+- `valor_minimo` - Valor mínimo
+- `valor_maximo` - Valor máximo
+- `nivel_incerteza_referencia` - Nível de incerteza (%)
+- `score_atratividade` - Score 0-10
+- `metodologias_json` - JSON com metodologias aplicadas
+- `riscos_json` - JSON com análise de riscos
+- `recomendacoes_json` - JSON com recomendações
+- `intangiveis_json` - JSON com análise de intangíveis (Gold)
+- `input_snapshot_json` - Snapshot dos dados de entrada
+- `report_id` - ID do relatório PDF gerado
+- `certificate_id` - ID do certificado (Gold)
+- `revisions_count` - Contador de revisões
+- `email_day3_sent` - Flag email D+3 enviado
+- `notified_expiration` - Flag notificação expiração D+7
+- `conversion_source` - Fonte da conversão
+- `converted_at` - Data de conversão
+- `last_plan_page_source` - Última origem de visita à página de planos
+- `created_at` - Data de criação
+- `updated_at` - Data de atualização
+- Campos premium bloqueados para usuários sem plano ativo
 
 ---
 
@@ -605,23 +755,42 @@ Convidar Membro Equipe
 
 ---
 
-## 14. PRÓXIMOS MÓDULOS (Planejados)
+## 14. COMPONENTES DE CONVERSÃO (Implementados)
+
+### ConversionBanner
+**Arquivo:** `src/react-app/components/ConversionBanner.tsx`
+**Função:** Banner persistente no dashboard para usuários sem plano ativo
+**Exibição:** Dispensável (guarda no localStorage)
+
+### ValuationExpiredModal
+**Arquivo:** `src/react-app/components/ValuationExpiredModal.tsx`
+**Função:** Modal D+7 após valuation rápido expirar
+**Opções:** Renovar valuation (1x por 90 dias) ou contratar plano
+
+### PremiumModal
+**Arquivo:** `src/react-app/components/PremiumModal.tsx`
+**Função:** Modal exibido ao tentar acessar recursos premium bloqueados
+**CTA:** Upgrade para desbloquear funcionalidade
+
+---
+
+## 15. PRÓXIMOS MÓDULOS (Planejados)
 
 Ver `docs/todo.md` para detalhes completos:
 
 - ⏳ Upload massivo de empresas (CSV/JSON)
-- ⏳ Valuation IA completo
+- ⏳ Worker/cron para email D+3 pós-valuation
 - ⏳ Sistema de workflow de negociação
-- ⏳ Notificações por email
 - ⏳ Sistema de propostas e ofertas
-- ⏳ Integração Stripe
-- ⏳ Testes de segurança
+- ⏳ Integração Stripe completa
+- ⏳ Testes de segurança (ID enumeration, file injection, etc.)
 - ⏳ Dashboard de assinatura
-- ⏳ Relatórios administrativos
+- ⏳ Métricas de conversão no painel Admin
+- ⏳ Geração real de PDFs (pdfkit)
 
 ---
 
-## 15. ASSETS E RECURSOS
+## 16. ASSETS E RECURSOS
 
 ### Armazenamento R2 (Cloudflare)
 - Imagens de empresas

@@ -1,4 +1,3 @@
-
-DROP INDEX idx_business_images_primary;
-DROP INDEX idx_business_images_business_id;
-DROP TABLE business_images;
+DROP INDEX idx_valuations_user;
+DROP INDEX idx_valuations_business;
+DROP TABLE valuations;

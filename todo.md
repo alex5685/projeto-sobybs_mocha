@@ -31,7 +31,10 @@
 - #39: Criar página de visualização da empresa cadastrada com botões "Valuation IA" e "Gerar Relatório"
 - #40: Adaptar valuation para usar dados financeiros detalhados obrigatórios
 - #41: Criar gerador de relatório analítico consolidado com todos os dados da empresa
-- #42: Estruturar valuation IA (algoritmo de cálculo e análise)
+- ✅ #42: Valuation Rápido (gratuito) implementado - /valuation-rapido/:businessId
+- ✅ #49: Valuation Completo (pago) implementado - /empresa/:businessId/valuation-completo com conteúdo por plano (Bronze/Silver/Gold)
+- ✅ #56: Sistema de revisões de valuation implementado com limites por plano (Bronze: 1/90d, Silver/Gold: ilimitadas)
+- #50: Implementar geração REAL de PDFs com pdfkit (atualmente retorna stub com report_id)
 
 ## Marketplace
 - #26: Criar listagem pública de empresas com dados anônimos
@@ -53,6 +56,14 @@
 - #35: Configurar email transacional para novos cadastros
 - #36: Criar notificações de mudança de status no workflow
 - #37: Implementar alertas de vencimento de pagamentos
+
+## Conversão e Lead Nurturing
+- #51: Implementar worker/cron para e-mail automático D+3 após quick valuation
+- ✅ #52: Modal de expiração (D+7) implementado - ValuationExpiredModal.tsx
+- ✅ #53: Banner persistente implementado - ConversionBanner.tsx
+- ✅ #54: Modal "Conteúdo Premium" implementado - PremiumModal.tsx
+- ✅ Tracking de conversão implementado com query params e eventos
+- #55: Adicionar métricas de conversão por fonte no painel Admin (dashboard de analytics)
 
 ## Segurança e Testes
 - #44: Teste de invasão de URL (ID enumeration - verificar acesso não autorizado)
