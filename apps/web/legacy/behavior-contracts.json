@@ -1,0 +1,13 @@
+{
+  "contracts": [
+    {
+      "id": "GET /api/reports/:reportId/download",
+      "kind": "hono-route",
+      "method": "GET",
+      "sourcePath": "/api/reports/:reportId/download",
+      "nextRoutePath": "reports/[reportId]/download",
+      "expectedFilePath": "apps/web/src/app/api/reports/[reportId]/download/route.ts",
+      "evidence": "app.get(\"/api/reports/:reportId/download\", authMiddleware, async (c) => {"
+    }
+  ]
+}
